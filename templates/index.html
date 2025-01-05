@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>小说转语音</title>
+    <meta charset="UTF-8">
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f2f5;
+        }
+        .container {
+            background-color: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        h1 {
+            color: #1a1a1a;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        textarea {
+            width: 100%;
+            height: 200px;
+            margin: 10px 0;
+            padding: 15px;
+            border: 2px solid #e8e8e8;
+            border-radius: 8px;
+            resize: vertical;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+            box-sizing: border-box;
+        }
+        textarea:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            display: block;
+            margin: 20px auto;
+            min-width: 150px;
+        }
+        button:hover {
+            background-color: #45a049;
+            transform: translateY(-2px);
+            box-shadow: 0 2px 8px rgba(76,175,80,0.3);
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        #audioPlayer {
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 8px;
+            background-color: #f8f9fa;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .loading-container {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .loading-spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #4CAF50;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .loading-text {
+            margin-top: 15px;
+            color: #666;
+            font-size: 16px;
+        }
+        .status-container {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+        }
+        .status-success {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+        }
+        .status-error {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .audio-container {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .audio-title {
+            margin-bottom: 10px;
+            color: #4a4a4a;
+            font-size: 14px;
+        }
+        .text-display {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            line-height: 1.8;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .text-segment {
+            padding: 5px 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            transition: all 0.3s ease;
+            line-height: 2;
+        }
+        
+        .word-span {
+            display: inline-block;
+            padding: 0 1px;
+            border-radius: 2px;
+            transition: all 0.2s ease;
+        }
+        
+        .word-span.active {
+            background-color: #e8f5e9;
+            color: #2e7d32;
+            font-weight: 500;
+        }
+        
+        .text-segment.narration {
+            color: #666;
+        }
+        
+        .text-segment.dialogue {
+            color: #1a1a1a;
+        }
+        
+        .text-segment.monologue {
+            color: #0277bd;
+            font-style: italic;
+        }
+
+        /* 滚动条样式 */
+        .text-display::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .text-display::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .text-display::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        
+        .text-display::-webkit-scrollbar-thumb:hover {
+            background: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>文字转语音</h1>
+        <form id="textForm">
+            <textarea id="inputText" name="text" placeholder="请输入小说文本..."></textarea>
+            <button type="submit" id="submitBtn">生成语音</button>
+        </form>
+        
+        <div class="loading-container" id="loadingContainer">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">正在生成语音，请稍候...</div>
+        </div>
+
+        <div class="status-container" id="statusContainer"></div>
+        
+        <div class="text-display" id="textDisplay"></div>
+        
+        <div class="audio-container" id="audioContainer">
+            <div class="audio-title">生成的语音：</div>
+            <audio id="audioPlayer" controls>
+                您的浏览器不支持音频播放。
+            </audio>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('textForm').onsubmit = async function(e) {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const loadingContainer = document.getElementById('loadingContainer');
+            const audioContainer = document.getElementById('audioContainer');
+            const statusContainer = document.getElementById('statusContainer');
+            const audioPlayer = document.getElementById('audioPlayer');
+            const textDisplay = document.getElementById('textDisplay');
+            const inputText = document.getElementById('inputText').value;
+            
+            // 重置状态
+            statusContainer.style.display = 'none';
+            audioContainer.style.display = 'none';
+            textDisplay.style.display = 'none';
+            
+            // 显示加载动画
+            submitBtn.disabled = true;
+            loadingContainer.style.display = 'block';
+            
+            try {
+                const response = await fetch('/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        text: inputText
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    // 更新音频播放器
+                    audioPlayer.src = data.audio_url;
+                    audioContainer.style.display = 'block';
+                    audioContainer.classList.add('fade-in');
+                    
+                    // 显示文本段落
+                    textDisplay.innerHTML = '';
+                    textDisplay.style.display = 'block';
+                    
+                    data.segments.forEach((segment, index) => {
+                        const div = document.createElement('div');
+                        div.className = `text-segment ${segment.type}`;
+                        div.dataset.index = index;
+                        
+                        // 为每个字创建单独的 span
+                        if (segment.word_timings && segment.word_timings.length > 0) {
+                            segment.word_timings.forEach(timing => {
+                                const span = document.createElement('span');
+                                span.className = 'word-span';
+                                span.textContent = timing.text;
+                                span.dataset.startTime = timing.start;
+                                span.dataset.endTime = timing.end;
+                                div.appendChild(span);
+                            });
+                        } else {
+                            div.textContent = segment.text;
+                        }
+                        
+                        textDisplay.appendChild(div);
+                    });
+                    
+                    // 显示成功状态
+                    statusContainer.className = 'status-container status-success fade-in';
+                    statusContainer.style.display = 'block';
+                    statusContainer.textContent = '语音生成成功！';
+                    
+                    // 自动播放
+                    audioPlayer.play();
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                statusContainer.className = 'status-container status-error fade-in';
+                statusContainer.style.display = 'block';
+                statusContainer.textContent = '生成语音时出错，请重试';
+            } finally {
+                submitBtn.disabled = false;
+                loadingContainer.style.display = 'none';
+            }
+        };
+
+        // 修改音频播放时间更新处理
+        const audioPlayer = document.getElementById('audioPlayer');
+        let currentWord = null;
+
+        audioPlayer.addEventListener('timeupdate', function() {
+            const currentTime = audioPlayer.currentTime;
+            const words = document.querySelectorAll('.word-span');
+            
+            words.forEach(word => {
+                const startTime = parseFloat(word.dataset.startTime);
+                const endTime = parseFloat(word.dataset.endTime);
+                
+                if (currentTime >= startTime && currentTime <= endTime) {
+                    if (currentWord !== word) {
+                        if (currentWord) {
+                            currentWord.classList.remove('active');
+                        }
+                        word.classList.add('active');
+                        currentWord = word;
+                        
+                        // 滚动到当前文字
+                        word.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center',
+                            inline: 'nearest'
+                        });
+                    }
+                } else {
+                    word.classList.remove('active');
+                }
+            });
+        });
+
+        // 音频结束时清除高亮
+        audioPlayer.addEventListener('ended', function() {
+            if (currentWord) {
+                currentWord.classList.remove('active');
+                currentWord = null;
+            }
+        });
+        
+        // 添加点击文字跳转功能
+        document.getElementById('textDisplay').addEventListener('click', function(e) {
+            const word = e.target.closest('.word-span');
+            if (word) {
+                const startTime = parseFloat(word.dataset.startTime);
+                audioPlayer.currentTime = startTime;
+                audioPlayer.play();
+            }
+        });
+    </script>
+</body>
+</html> 
