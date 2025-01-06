@@ -52,3 +52,6 @@ python run.py
 - `templates/`: HTML 模板文件
 - `static/`: 静态资源文件
   - `audio/`: 生成的音频文件存储目录
+
+## 演示
+![演示](demo.gif)
